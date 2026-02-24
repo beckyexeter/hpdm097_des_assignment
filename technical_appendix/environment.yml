@@ -1,0 +1,17 @@
+name: crit_care_des
+channels:
+  - conda-forge
+dependencies:
+  - ipytest
+  - jupyterlab=4.4.7
+  - jupyterlab-plotly-extension=1.0.0
+  - jupyterlab-spellchecker=0.8.4
+  - matplotlib=3.9.1
+  - numpy=2.0.1
+  - pandas=2.2.2
+  - plotly_express==0.4.1
+  - pytest==8.3.4
+  - python=3.11
+  - simpy=4.1.1
+  - sim-tools=0.10.0
+  - vidigi==1.1.0
