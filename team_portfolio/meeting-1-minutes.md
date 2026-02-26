@@ -15,7 +15,7 @@
 | **Assignment of tasks to be tackled prior to next meeting** | See action items table below. |
 | **Location, date, and time of next meeting** | Cross Keys, 03/03/26, 11:00 |
 
-## Action Items
+## Action Items
 
 | Task | Date to be done by | Assigned to |
 | ----- | ----- | ----- |
