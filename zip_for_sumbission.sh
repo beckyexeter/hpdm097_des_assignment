@@ -5,13 +5,14 @@
 
 quarto render report.qmd --to pdf
 
-mkdir submission_directory
+mkdir HPDM098_assessment2
 
-cp report.pdf submission_directory/
-cp -r team_portfolio submission_directory/
-cp -r technical_appendix submission_directory/
-cp binder/environment.yml submission_directory/technical_appendix/
+cp report.pdf HPDM098_assessment2/
+cp -r team_portfolio HPDM098_assessment2/
+cp -r technical_appendix HPDM098_assessment2/
+cp binder/environment.yml HPDM098_assessment2/technical_appendix/
 
-zip -r HPDM098_assessment2.zip submission_directory -x '.*' -x '__MACOSX'
+zip -r HPDM098_assessment2.zip HPDM098_assessment2 -x '.*' -x '__MACOSX'
 
 mv HPDM098_assessment2.zip ../
+rm -r HPDM098_assessment2
