@@ -1,4 +1,4 @@
-name: crit_care_des
+name: des_replication
 channels:
   - conda-forge
 dependencies:

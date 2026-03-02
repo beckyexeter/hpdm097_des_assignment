@@ -1,0 +1,36 @@
+---
+bibliography: references.bib
+format:
+  pdf:
+    link-citations: true
+csl: vancouver.csl
+---
+
+# HPDM097 Assignment 2
+
+Student Numbers:
+
+## Introduction
+
+Text
+
+## Methods
+
+Text
+
+## Results
+
+Text
+
+## Discussion
+
+Text
+
+## Bibliography
+
+::: {#refs}
+:::
+
+## AI Declaration
+
+Text
