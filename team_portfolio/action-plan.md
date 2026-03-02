@@ -7,7 +7,8 @@
 | Code iterations 1 to 3 of the model                          | 28/02/2026         | Becky       |
 | Write code to run trials of the model with different numbers of beds | 03/03/2026         | Becky       |
 | Plan possible extensions to the experiments in the paper     | 03/03/2026         | Shantanu    |
-| Begin work on documenting the methods used to recreate the model for the project report | 03/03/2026         | Shantanu    |
+| Start to develop some LLM prompts for recreating the model | 03/03/2026 | Shantanu |
+| Begin work on the introduction and methods sections of the project report | 03/02/2026 | Shantanu |
 
 ## Week 02: 03/03 – 09/03
 
