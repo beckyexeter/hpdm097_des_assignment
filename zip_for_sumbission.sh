@@ -11,3 +11,4 @@ cp binder/environment.yml submission_directory/technical_appendix/
 
 zip -r HPDM098_assessment2.zip submission_directory -x '.*' -x '__MACOSX'
 
+mv HPDM098_assessment2.zip ../
