@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Script for rendering the project report to a pdf and preparing a zip file for
+# submission.
+
 quarto render report.qmd --to pdf
 
 mkdir submission_directory
