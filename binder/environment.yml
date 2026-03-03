@@ -3,6 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - flake8
+  - joblib=1.4.2
   - jupyterlab=4.4.7
   - jupyterlab-plotly-extension=1.0.0
   - jupyterlab-spellchecker=0.8.4

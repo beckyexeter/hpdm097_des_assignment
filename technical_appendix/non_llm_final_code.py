@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import simpy
 import warnings
+from joblib import Parallel, delayed
 from scipy.stats import t
 from sim_tools.distributions \
     import Exponential, Lognormal, GroupedContinuousEmpirical
@@ -298,11 +299,20 @@ class ScenarioTrial:
         Desired relative precision as a proportion (default 0.05 = 5%).
     ci_fig_size : tuple
         Figure size used by the confidence-interval plot methods.
+    min_reps_pts : int
+        Minimum replications to reach precision for number of patients.
+        (-1 if not reached).
     min_reps_wait : int
-        Minimum replications to reach precision for mean queue time
+        Minimum replications to reach precision for mean queue time.
+        (-1 if not reached).
+    min_reps_wait : int
+        Minimum replications to reach precision for mean queue time.
         (-1 if not reached).
     min_reps_util : int
-        Minimum replications to reach precision for bed utilisation
+        Minimum replications to reach precision for bed utilisation.
+        (-1 if not reached).
+    min_reps_cancels : int
+        Minimum replications to reach precision for cancellations.
         (-1 if not reached).
     min_reps : int
         Overall minimum replications required (-1 if not reached).
@@ -313,8 +323,11 @@ class ScenarioTrial:
         and occupancy.
     overall_results : pandas.DataFrame
         The overall results of the trial.
+    var_pts_df : pandas.DataFrame
+        Running statistics (mean, CI bounds, % deviation) for number
+        of patients
     var_wait_df : pandas.DataFrame
-        Running statistics (mean, CI bounds, % deviation) for queue time.
+        Running statistics for queue time.
     var_util_df : pandas.DataFrame
         Running statistics for bed utilisation.
     var_beds_df : pandas.DataFrame
@@ -334,9 +347,11 @@ class ScenarioTrial:
         self.warm_up = warm_up_period
         self.alpha = ci_alpha
         self.precision = desired_precision
+        self.min_reps_pts = 0
         self.min_reps_wait = 0
         self.min_reps_util = 0
         self.min_reps_beds = 0
+        self.min_reps_cancels = 0
         self.min_reps = 0
         self.run_results_dict = {}
         self.trial_results_df = pd.DataFrame()
@@ -345,9 +360,36 @@ class ScenarioTrial:
         self.trial_results_df["Bed Occupancy"] = [0.0]
         self.trial_results_df["Number of Cancellations"] = [0]
         self.overall_results_df = pd.DataFrame()
+        self.var_pts_df = pd.DataFrame()
         self.var_wait_df = pd.DataFrame()
         self.var_util_df = pd.DataFrame()
         self.var_beds_df = pd.DataFrame()
+        self.var_cancels_df = pd.DataFrame()
+
+    def single_run(self, run_number):
+        ccu_model = CritCareUnit(
+            random_seed=run_number,
+            unplanned_params_dict=self.unplanned_dist_params,
+            elective_dict=self.elective_params,
+            time_to_clean=self.clean_time,
+            number_of_beds=self.num_beds,
+            simulation_duration=self.sim_duration,
+            warm_up_period=self.warm_up
+        )
+        ccu_model.run()
+        run_results = ccu_model.results_df
+        results = {"Run Number": run_number,
+                   "Number of Patients": len(run_results),
+                   "Mean Wait for a Bed": ccu_model.mean_queue_time,
+                   "Bed Utilisation": ccu_model.bed_utilisation,
+                   "Bed Occupancy": ccu_model.bed_occupancy,
+                   "Number of Cancellations": ccu_model.num_cancellations
+        }
+        return results
+
+    def process_trial_results(self):
+        self.trial_results_df = pd.DataFrame(self.trial_results_df)
+        self.trial_results_df.set_index("Run Number", inplace=True)
 
     def run_trial(self):
         """
@@ -367,30 +409,13 @@ class ScenarioTrial:
         falls below the desired precision. A warning is issued for any metric
         that never reaches the desired precision.
         """
-        for run in range(self.num_reps):
-            ccu_model = CritCareUnit(
-                random_seed=run,
-                unplanned_params_dict=self.unplanned_dist_params,
-                elective_dict=self.elective_params,
-                time_to_clean=self.clean_time,
-                number_of_beds=self.num_beds,
-                simulation_duration=self.sim_duration,
-                warm_up_period=self.warm_up
-            )
-            ccu_model.run()
-            run_results = ccu_model.results_df
-            self.run_results_dict[f"Replication {run+1}"] = run_results
-            self.trial_results_df.loc[run, "Mean Wait for a Bed"] \
-                = [ccu_model.mean_queue_time]
-            self.trial_results_df.loc[run, "Bed Utilisation"] \
-                = [ccu_model.bed_utilisation]
-            self.trial_results_df.loc[run, "Bed Occupancy"] \
-                = [ccu_model.bed_occupancy]
-            self.trial_results_df.loc[run, "Number of Cancellations"] \
-                = [ccu_model.num_cancellations]
-        self.trial_results_df.index = np.arange(1, self.num_reps + 1)
-        self.trial_results_df.index.name = "Replication"
+        self.trial_results_df = Parallel(n_jobs=-1)(delayed(self.single_run)(run)
+                                                    for run in range(self.num_reps))
 
+        self.process_trial_results()
+
+        mean_pts = self.trial_results_df["Number of Patients"].mean()
+        std_pts = self.trial_results_df["Number of Patients"].std()
         mean_wait = self.trial_results_df["Mean Wait for a Bed"].mean()
         std_wait = self.trial_results_df["Mean Wait for a Bed"].std()
         mean_util = self.trial_results_df["Bed Utilisation"].mean()
@@ -401,17 +426,64 @@ class ScenarioTrial:
         std_cancels = self.trial_results_df["Number of Cancellations"].std()
 
         self.overall_results_df = pd.DataFrame({
-            "Mean": [mean_wait, mean_util, mean_beds, mean_cancels],
-            "Standard Deviation": [std_wait, std_util, std_beds, std_cancels]
+            "Mean": [mean_pts, mean_wait, mean_util, mean_beds, mean_cancels],
+            "Standard Deviation": [std_pts, std_wait, std_util, std_beds, std_cancels]
         })
 
-        self.overall_results_df.index = ["Mean Wait for a Bed",
+        self.overall_results_df.index = ["Number of Patients",
+                                         "Mean Wait for a Bed",
                                          "Bed Utilisation",
                                          "Bed Occupancy",
                                          "Number of Cancellations"]
 
         degrees_freedom = self.num_reps - 1
         t_value = t.ppf(1 - (self.alpha / 2),  degrees_freedom)
+
+        mean_pts_list = self.trial_results_df["Number of Patients"].tolist()
+        cumulative_mean_pts = [mean_pts_list[0]]
+        running_var_pts = [0.0]
+        for i in range(1, self.num_reps):
+            cumulative_mean_pts.append(cumulative_mean_pts[i - 1]
+                                       + (mean_pts_list[i]
+                                       - cumulative_mean_pts[i - 1])
+                                       / (i + 1))
+            running_var_pts.append(running_var_pts[i - 1]
+                                   + (mean_pts_list[i]
+                                   - cumulative_mean_pts[i - 1])
+                                   * (mean_pts_list[i]
+                                   - cumulative_mean_pts[i]))
+        with np.errstate(divide='ignore', invalid='ignore'):
+            running_std_pts = np.sqrt(running_var_pts
+                                      / np.arange(self.num_reps))
+        with np.errstate(divide='ignore', invalid='ignore'):
+            std_error_pts = running_std_pts / np.sqrt(np.arange(1,
+                                                                self.num_reps
+                                                                + 1))
+        half_width_pts = t_value * std_error_pts
+        upper_pts = cumulative_mean_pts + half_width_pts
+        lower_pts = cumulative_mean_pts - half_width_pts
+        with np.errstate(divide='ignore', invalid='ignore'):
+            deviation_pts = (half_width_pts / cumulative_mean_pts) * 100
+        self.var_pts_df = pd.DataFrame([mean_pts_list, cumulative_mean_pts,
+                                        running_std_pts,
+                                        lower_pts, upper_pts,
+                                        deviation_pts]).T
+        self.var_pts_df.columns = ["Mean", "Cumulative Mean",
+                                   "Standard Deviation", "Lower Interval",
+                                   "Upper Interval", "% Deviation"]
+        self.var_pts_df.index = np.arange(1, self.num_reps + 1)
+        self.var_pts_df.index.name = "Replications"
+
+        pts_reps_below_precision = self.var_pts_df.loc[
+            self.var_pts_df["% Deviation"]
+            <= self.precision*100].index.tolist()
+        if len(pts_reps_below_precision) == 0:
+            message = "WARNING: The replications do not reach the desired " \
+                + "precision for mean wait for a bed."
+            warnings.warn(message)
+            self.min_reps_pts = -1
+        else:
+            self.min_reps_pts = pts_reps_below_precision[0]
 
         mean_wait_list = self.trial_results_df["Mean Wait for a Bed"].tolist()
         cumulative_mean_wait = [mean_wait_list[0]]
@@ -601,10 +673,13 @@ class ScenarioTrial:
         else:
             self.min_reps_cancels = cancels_reps_below_precision[0]
 
-        if (self.min_reps_wait > 0
+        if (self.min_reps_pts > 0
+            and self.min_reps_wait > 0
             and self.min_reps_util > 0
+            and self.min_reps_beds > 0
             and self.min_reps_cancels > 0):
                 self.min_reps = max(
+                    self.min_reps_pts,
                     self.min_reps_wait,
                     self.min_reps_util,
                     self.min_reps_beds,
@@ -620,48 +695,57 @@ class ScenarioTrial:
         A vertical red dashed line marks the replication at which the
         desired precision is first achieved (if ever).
         """
-        fig, axs = plt.subplots(4, figsize=(12, 16), sharex=True)
+        fig, axs = plt.subplots(5, figsize=(12, 16), sharex=True)
 
-        self.var_wait_df[
+        self.var_pts_df[
             ["Cumulative Mean", "Lower Interval", "Upper Interval"]
         ].plot(ax=axs[0], legend=False)
         axs[0].grid(ls='--')
-        axs[0].set_ylabel("Mean wait for a bed (hours)")
+        axs[0].set_ylabel("Number of patients")
         if self.min_reps > 0:
             axs[0].axvline(x=self.min_reps_wait, ls='--', color='red')
 
-        self.var_util_df[
+        self.var_wait_df[
             ["Cumulative Mean", "Lower Interval", "Upper Interval"]
         ].plot(ax=axs[1], legend=False)
         axs[1].grid(ls='--')
-        axs[1].set_ylabel("Bed utilisation (%)")
+        axs[1].set_ylabel("Mean wait for a bed (hours)")
         if self.min_reps > 0:
             axs[1].axvline(x=self.min_reps_wait, ls='--', color='red')
 
-        self.var_beds_df[
+        self.var_util_df[
             ["Cumulative Mean", "Lower Interval", "Upper Interval"]
         ].plot(ax=axs[2], legend=False)
         axs[2].grid(ls='--')
-        axs[2].set_ylabel("Bed occupancy")
+        axs[2].set_ylabel("Bed utilisation (%)")
         if self.min_reps > 0:
             axs[2].axvline(x=self.min_reps_wait, ls='--', color='red')
 
-        self.var_cancels_df[
+        self.var_beds_df[
             ["Cumulative Mean", "Lower Interval", "Upper Interval"]
         ].plot(ax=axs[3], legend=False)
         axs[3].grid(ls='--')
-        axs[3].set_ylabel("Number of cancellations")
+        axs[3].set_ylabel("Bed occupancy")
         if self.min_reps > 0:
             axs[3].axvline(x=self.min_reps_wait, ls='--', color='red')
+
+        self.var_cancels_df[
+            ["Cumulative Mean", "Lower Interval", "Upper Interval"]
+        ].plot(ax=axs[4], legend=False)
+        axs[4].grid(ls='--')
+        axs[4].set_ylabel("Number of cancellations")
+        if self.min_reps > 0:
+            axs[4].axvline(x=self.min_reps_wait, ls='--', color='red')
 
         plt.setp(axs[0].get_xticklabels(), visible=False)
         plt.setp(axs[1].get_xticklabels(), visible=False)
         plt.setp(axs[2].get_xticklabels(), visible=False)
-        axs[3].set_xlabel("Replications")
+        plt.setp(axs[4].get_xticklabels(), visible=False)
+        axs[4].set_xlabel("Replications")
 
         handles, labels = axs[0].get_legend_handles_labels()
         fig.legend(handles, labels, loc="lower center",
-                   ncol=4, bbox_to_anchor=(0.5, -0.05))
+                   ncol=5, bbox_to_anchor=(0.5, -0.05))
         plt.tight_layout()
 
         return axs
