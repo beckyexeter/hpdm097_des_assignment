@@ -696,5 +696,7 @@ class Experiment:
                 warm_up_period=variables["Warm-Up Period"],
                 desired_precision=variables["Desired Precision"]
             )
+            print(f"Scenario: {scenario}\nStarting simulations...")
             scenario_trial.run_trial()
+            print("Simulations complete.")
             self.trial_objects[scenario] = scenario_trial
