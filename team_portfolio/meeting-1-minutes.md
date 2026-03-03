@@ -2,7 +2,7 @@
 
 **Location:** Cross Keys, St Luke's Campus
 **Date:** 24/02/2026
-**Time:** 11:00
+**Time:** 11:15
 **Attendees:** Shantanu, Becky
 
 ## Discussion
@@ -15,7 +15,7 @@
 | **Experiments which need to be run to replicate the study results** | We noted four experiments run in the original paper: <ol><li>Increasing the number of beds</li><li>Ring-fencing emergency and elective beds</li><li>Reducing discharge delays</li><li>Changing the scheduling of elective surgery</li></ol>
 We will focus on running the model with different numbers of beds initially. |
 | **Assignment of tasks to be tackled prior to next meeting** | See action items table below. |
-| **Location, date, and time of next meeting** | Cross Keys, 03/03/26, 11:00 |
+| **Location, date, and time of next meeting** | Cross Keys, 03/03/26, 11:15 |
 
 ## Action Items
 

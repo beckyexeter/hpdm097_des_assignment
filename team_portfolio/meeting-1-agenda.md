@@ -2,7 +2,7 @@
 
 **Location:** Cross Keys, St Luke's Campus
 **Date:** 24/02/2026
-**Time:** 11:00
+**Time:** 11:15
 ## Discussion Items
 
 - Choice of paper to replicate

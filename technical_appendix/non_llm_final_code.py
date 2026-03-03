@@ -220,6 +220,8 @@ class CritCareUnit:
                         patient.queue_time)
                     self.results_df.at[patient.id, "Length of Stay"] = (
                         sampled_len_stay)
+                    self.sampled_stay_durations[patient.type].append(
+                        sampled_len_stay)
                     self.sim_admitted_pts.append(patient)
                 yield self.env.timeout(sampled_len_stay + self.clean_time)
 
